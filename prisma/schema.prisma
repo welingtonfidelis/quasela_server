@@ -1,0 +1,89 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+  MANAGER
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  name          String
+  email         String   @unique
+  user_login    String   @unique
+  user_password String
+  image_url     String
+  image_key     String
+  is_blocked    Boolean  @default(false)
+  permissions   Role[]   @default([USER])
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  groups       GroupUser[]
+  owned_groups Group[]     @relation("GroupOwner")
+  events       UserEvent[]
+
+  @@index([email])
+  @@index([user_login])
+}
+
+model Group {
+  id          Int      @id @default(autoincrement())
+  uuid        String   @unique @default(uuid())
+  name        String
+  description String?  @default("")
+  goal_value  Int
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  owner_id Int
+  owner    User        @relation("GroupOwner", fields: [owner_id], references: [id], onDelete: Cascade)
+  users    GroupUser[]
+  events   Event[]
+
+  @@index([uuid])
+}
+
+model Event {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String   @default("")
+  points      Int
+  event_date  DateTime
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  group_id Int
+  group    Group       @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  users    UserEvent[]
+}
+
+model GroupUser {
+  user_id  Int
+  group_id Int
+
+  user  User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [group_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, group_id])
+}
+
+model UserEvent {
+  user_id  Int
+  event_id Int
+
+  user  User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [event_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, event_id])
+}
